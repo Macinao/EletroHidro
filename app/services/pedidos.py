@@ -10,8 +10,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import transacao
-from app.errors import Conflito, NaoEncontrado
+from app.errors import Conflito, DadosInvalidos, NaoEncontrado
 from app.models import (
+    VALOR_MAXIMO_CONTA,
     Cliente,
     ContaReceber,
     ItemPedido,
@@ -47,6 +48,11 @@ def criar(db: Session, dados: PedidoCriar) -> Pedido:
             for i in dados.itens
         ],
     )
+    # Recusa já na criação um pedido que não poderia ser faturado (a conta a receber não comportaria o valor).
+    if pedido.total > VALOR_MAXIMO_CONTA:
+        raise DadosInvalidos(
+            f"O total do pedido ({pedido.total}) excede o máximo de uma conta a receber ({VALOR_MAXIMO_CONTA})."
+        )
     with transacao(db):
         db.add(pedido)
     return pedido

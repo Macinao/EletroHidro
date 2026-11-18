@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date
 from typing import Any
 
 from sqlalchemy import select
@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.models import Pedido, StatusPedido
 from app.paginacao import Paginacao, paginar
+from app.periodo import fim_do_dia, inicio_do_dia
 
 
 def listar(
@@ -25,7 +26,7 @@ def listar(
     if status:
         consulta = consulta.where(Pedido.status == status)
     if data_inicio:
-        consulta = consulta.where(Pedido.data_pedido >= data_inicio)
+        consulta = consulta.where(Pedido.data_pedido >= inicio_do_dia(data_inicio))
     if data_fim:
-        consulta = consulta.where(Pedido.data_pedido < data_fim + timedelta(days=1))
+        consulta = consulta.where(Pedido.data_pedido <= fim_do_dia(data_fim))
     return paginar(db, consulta, p)

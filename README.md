@@ -303,7 +303,8 @@ Sem a chave configurada: `503` com `"O recurso de IA está desativado: defina a 
 
 Códigos de erro: `400` parâmetro inválido (ex.: `data_inicio` depois de `data_fim`) · `404` não encontrado ·
 `409` conflito com o estado atual (estoque insuficiente, SKU/documento duplicado, transição de status inválida) ·
-`422` dados inválidos · `502`/`503` apenas no endpoint de IA.
+`422` dados inválidos (inclusive valores fora dos limites, ex.: quantidade acima de 1.000.000) · `500` só para falha
+inesperada, também em português · `502`/`503` apenas no endpoint de IA.
 
 ## IA e segurança
 
@@ -339,7 +340,15 @@ Cada camada tem teste próprio: o de camada 5 contorna o parser de propósito, e
 - **Preço congelado no item**, **total calculado** e **`VENCIDO` derivado**: dados derivados não ficam gravados para não envelhecer.
 - **Dinheiro é `Decimal`** (`NUMERIC(12,2)`), serializado como string no JSON; nunca `float`.
 - **Erros centralizados** em um único *handler*: services lançam exceções de domínio sem saber de HTTP; o `422` do Pydantic é
-  traduzido para português, com campo e mensagem.
+  traduzido para português, com campo e mensagem (um tipo de erro não mapeado vira "valor inválido", nunca texto em inglês).
+  O Swagger documenta esse formato real de erro, não o padrão do FastAPI.
+- **Validação na fronteira com limites explícitos.** Inteiros do corpo são estritos (`true` ou `"5"` não viram número em
+  silêncio) e têm teto (quantidade até 1.000.000; ids até o maior `INTEGER`). Um pedido cujo total não caberia na conta a
+  receber é recusado já na criação. Como rede de segurança, qualquer valor que o banco recuse por estar fora do intervalo
+  vira `422` em vez de `500`.
+- **Datas no fuso da aplicação.** Filtros por dia em colunas `timestamptz` são convertidos para o fuso do processo da API
+  (no Brasil, −03:00; no Docker, UTC). Comparar direto com uma data usaria o fuso do banco (UTC) e um pedido feito às 22h
+  cairia no dia seguinte. A IA recebe a data de hoje no prompt, pelo mesmo motivo.
 - **Testes contra PostgreSQL real**, em banco separado, porque as regras dependem de recursos do Postgres (`CHECK`, `FOR UPDATE`,
   SQL dos relatórios). SQLite escondería bugs reais. Os valores esperados dos relatórios foram calculados à mão.
 - **Migrações com Alembic**, geradas por *autogenerate* e revisadas; convenção de nomes para as constraints.
@@ -396,9 +405,12 @@ app/
   config.py          # variáveis de ambiente (pydantic-settings)
   database.py        # engine, sessão e o helper transacao()
   models.py          # modelos SQLAlchemy (6 tabelas)
-  errors.py          # exceções de domínio e handlers HTTP
+  errors.py          # exceções de domínio, handlers HTTP e formato dos erros
+  paginacao.py       # ?pagina=&tamanho= e a resposta paginada
+  periodo.py         # ?data_inicio=&data_fim= e os limites do dia no fuso da aplicação
+  validadores.py     # dígitos verificadores de CPF e CNPJ
   routers/           # HTTP: validação de entrada e resposta
-  schemas/           # DTOs Pydantic (request/response)
+  schemas/           # DTOs Pydantic (request/response); tipos.py tem os inteiros validados com limite
   services/          # regras de negócio e transações (inclui ia.py e sql_seguro.py)
   repositories/      # consultas (ORM) e SQL puro (relatorios.py, leitura.py)
   seed.py            # dados de demonstração
@@ -416,5 +428,7 @@ Escolhas deliberadas de escopo, que viram a lista do que faria a seguir:
 - **Pagamento integral** (sem parcelas) e **pedidos não editáveis** depois de criados (cancela-se e cria-se outro).
 - **Pedido faturado ou entregue não pode ser cancelado**: exigiria cancelar a conta a receber e tratar a devolução.
 - **Relatórios sem paginação** (têm `limite`); para volumes grandes, paginar ou materializar.
+- **Fuso horário:** a API usa o fuso do processo. No Docker o container roda em UTC, então lá o "dia" vira às 21h de Brasília
+  (vencimentos e filtros por data). Para operar no horário de Brasília em produção, configurar o fuso do container.
 - **IA:** a qualidade do SQL depende do modelo escolhido; a suíte valida as travas e o contrato com o SDK, não a qualidade das respostas
   de um modelo real. Uma recusa do modelo (`refusal`) vira `422` com mensagem clara, sem *fallback* automático para outro modelo.

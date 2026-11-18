@@ -4,6 +4,7 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, StringConstraints, ValidationInfo, field_validator
 
 from app.models import TipoMovimentacao
+from app.schemas.tipos import Id, QuantidadeComSinal
 
 
 class MovimentacaoCriar(BaseModel):
@@ -17,9 +18,9 @@ class MovimentacaoCriar(BaseModel):
         },
     )
 
-    produto_id: int
+    produto_id: Id
     tipo: TipoMovimentacao
-    quantidade: int  # ENTRADA/SAIDA: positiva. AJUSTE: com sinal (+ sobra, - perda).
+    quantidade: QuantidadeComSinal  # ENTRADA/SAIDA: positiva. AJUSTE: com sinal (+ sobra, - perda).
     motivo: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=200)]
 
     @field_validator("quantidade")
@@ -34,7 +35,22 @@ class MovimentacaoCriar(BaseModel):
 
 
 class MovimentacaoResposta(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": 120,
+                    "produto_id": 44,
+                    "tipo": "ENTRADA",
+                    "quantidade": 50,
+                    "motivo": "Compra do fornecedor - NF 1234",
+                    "data_hora": "2026-11-18T17:18:21.293641Z",
+                    "pedido_id": None,
+                }
+            ]
+        },
+    )
 
     id: int
     produto_id: int

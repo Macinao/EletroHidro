@@ -2,6 +2,7 @@
 
 import logging
 import re
+from datetime import date
 from functools import lru_cache
 from typing import Any
 
@@ -48,7 +49,9 @@ def descrever_esquema() -> str:
     return "\n\n".join(blocos)
 
 
-def montar_prompt_de_sistema(max_linhas: int) -> str:
+def montar_prompt_de_sistema(max_linhas: int, hoje: date) -> str:
+    # "hoje" vem da aplicação (não do CURRENT_DATE do banco, que roda em UTC): assim a IA e os
+    # relatórios concordam sobre o que está vencido, mesmo à noite no Brasil.
     return f"""Você converte perguntas em português em UMA consulta SQL (PostgreSQL 16, somente leitura) \
 sobre o banco da EletroHidro Distribuidora, distribuidora de materiais elétricos e hidráulicos.
 
@@ -66,7 +69,9 @@ REGRAS DE NEGÓCIO
 - Venda efetivada = pedido com status FATURADO ou ENTREGUE. Faturamento = soma de \
 itens_pedido.quantidade * itens_pedido.preco_unitario (ou contas_receber.valor por pedido); \
 a data do faturamento é contas_receber.data_emissao.
-- Conta vencida = contas_receber com status = 'PENDENTE' e data_vencimento < CURRENT_DATE.
+- A data de hoje é {hoje.isoformat()}. Use DATE '{hoje.isoformat()}' (e não CURRENT_DATE) quando a pergunta \
+envolver "hoje", "este mês", atraso etc.
+- Conta vencida = contas_receber com status = 'PENDENTE' e data_vencimento < DATE '{hoje.isoformat()}'.
 - Estoque abaixo do mínimo = produtos ativos (ativo = true) com estoque_atual < estoque_minimo.
 - Para filtrar por tipo de produto (disjuntores, cabos, tubos...), use ILIKE em produtos.subcategoria ou produtos.nome.
 - Valores de categoria/status/tipo são gravados em MAIÚSCULAS e sem acento (ex.: 'ELETRICO', 'FATURADO').
@@ -96,7 +101,7 @@ def gerar_sql(cliente: anthropic.Anthropic, settings: Settings, pergunta: str) -
         resposta = cliente.messages.create(
             model=settings.anthropic_model,
             max_tokens=_MAX_TOKENS,
-            system=montar_prompt_de_sistema(settings.ia_max_linhas),
+            system=montar_prompt_de_sistema(settings.ia_max_linhas, date.today()),
             messages=[{"role": "user", "content": pergunta}],
         )
     # Do mais específico para o mais genérico (assim cada falha ganha uma mensagem útil).

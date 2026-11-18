@@ -3,7 +3,7 @@
 from typing import Any, NamedTuple
 
 from fastapi import Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session
 
@@ -14,7 +14,7 @@ class Paginacao(NamedTuple):
 
 
 def paginacao(
-    pagina: int = Query(1, ge=1, description="Número da página, começando em 1."),
+    pagina: int = Query(1, ge=1, le=1_000_000, description="Número da página, começando em 1."),
     tamanho: int = Query(20, ge=1, le=100, description="Itens por página (máximo 100)."),
 ) -> Paginacao:
     """Dependência do FastAPI: lê ?pagina=&tamanho= da URL."""
@@ -23,9 +23,9 @@ def paginacao(
 
 class Pagina[T](BaseModel):
     itens: list[T]
-    total: int
-    pagina: int
-    tamanho: int
+    total: int = Field(examples=[43], description="Total de registros que atendem aos filtros.")
+    pagina: int = Field(examples=[1])
+    tamanho: int = Field(examples=[20])
 
 
 def paginar(db: Session, consulta: Select, p: Paginacao) -> dict[str, Any]:

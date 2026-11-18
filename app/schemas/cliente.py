@@ -77,7 +77,22 @@ class ClienteAtualizar(BaseModel):
 
 
 class ClienteResposta(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": 1,
+                    "tipo": "PJ",
+                    "documento": "11222333000181",
+                    "nome": "Construtora Alvorada Ltda",
+                    "cidade": "Campinas",
+                    "uf": "SP",
+                    "contato": "compras@alvorada.example",
+                }
+            ]
+        },
+    )
 
     id: int
     tipo: TipoCliente

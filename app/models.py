@@ -178,6 +178,9 @@ class MovimentacaoEstoque(Base):
     pedido_id: Mapped[int | None] = mapped_column(ForeignKey("pedidos.id"), index=True)
 
 
+VALOR_MAXIMO_CONTA = Decimal("9999999999.99")  # maior valor que cabe em NUMERIC(12, 2)
+
+
 class ContaReceber(Base):
     __tablename__ = "contas_receber"
     __table_args__ = (CheckConstraint("valor > 0", name="valor_positivo"),)

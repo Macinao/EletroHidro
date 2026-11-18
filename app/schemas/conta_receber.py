@@ -7,7 +7,22 @@ from app.models import StatusConta
 
 
 class ContaReceberResposta(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": 23,
+                    "pedido_id": 31,
+                    "valor": "479.00",
+                    "data_emissao": "2026-11-18",
+                    "data_vencimento": "2026-12-18",
+                    "data_pagamento": None,
+                    "status": "PENDENTE",
+                }
+            ]
+        },
+    )
 
     id: int
     pedido_id: int

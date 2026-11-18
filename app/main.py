@@ -1,9 +1,10 @@
 import logging
+from typing import Any
 
 from fastapi import FastAPI
 
-from app.errors import registrar_handlers
-from app.routers import clientes, contas_receber, ia, movimentacoes, pedidos, produtos, relatorios
+from app.errors import Erro, ErroValidacao, registrar_handlers
+from app.routers import Respostas, clientes, contas_receber, ia, movimentacoes, pedidos, produtos, relatorios
 
 # O uvicorn só configura os loggers dele: sem isto, os logger.info() da aplicação (ex.: a trilha de
 # auditoria das consultas da IA) seriam descartados, pois o nível padrão do Python é WARNING.
@@ -48,6 +49,13 @@ TAGS = [
     {"name": "Infra", "description": "Verificação de saúde."},
 ]
 
+# Documenta no Swagger o formato REAL dos erros. Sem isto, o FastAPI descreve o 422 com o formato
+# padrão dele (loc/msg/type), que não é o que esta API devolve.
+RESPOSTAS_DE_ERRO: Respostas = {
+    422: {"model": ErroValidacao, "description": "Dados inválidos: lista de erros por campo."},
+    "default": {"model": Erro, "description": "Demais erros: corpo com o campo `detail`."},
+}
+
 app = FastAPI(
     title="EletroHidro Distribuidora — API",
     description=DESCRICAO,
@@ -55,15 +63,28 @@ app = FastAPI(
     openapi_tags=TAGS,
 )
 registrar_handlers(app)
-app.include_router(produtos.router)
-app.include_router(clientes.router)
-app.include_router(movimentacoes.router)
-app.include_router(pedidos.router)
-app.include_router(contas_receber.router)
-app.include_router(relatorios.router)
-app.include_router(ia.router)
+for modulo in (produtos, clientes, movimentacoes, pedidos, contas_receber, relatorios, ia):
+    app.include_router(modulo.router, responses=RESPOSTAS_DE_ERRO)
 
 
 @app.get("/saude", tags=["Infra"], summary="Verifica se a API está no ar")
 def saude() -> dict[str, str]:
     return {"status": "ok"}
+
+
+_gerar_openapi = app.openapi
+
+
+def _openapi_em_portugues() -> dict[str, Any]:
+    """Gera o documento OpenAPI uma vez e traduz o rótulo padrão do FastAPI ("Successful Response")."""
+    if app.openapi_schema is None:
+        for operacoes in _gerar_openapi()["paths"].values():
+            for operacao in operacoes.values():
+                for resposta in operacao.get("responses", {}).values():
+                    if resposta.get("description") == "Successful Response":
+                        resposta["description"] = "Sucesso"
+    assert app.openapi_schema is not None  # preenchido (e reaproveitado) pelo próprio FastAPI
+    return app.openapi_schema
+
+
+app.openapi = _openapi_em_portugues  # type: ignore[method-assign]

@@ -10,6 +10,7 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from app.models import CategoriaProduto, UnidadeProduto
+from app.schemas.tipos import EstoqueMinimo
 
 Preco = Annotated[Decimal, Field(ge=0, max_digits=12, decimal_places=2, examples=["28.90"])]
 Texto = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
@@ -41,7 +42,7 @@ class ProdutoCriar(BaseModel):
     subcategoria: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=60)]
     unidade: UnidadeProduto
     preco_venda: Preco
-    estoque_minimo: int = Field(0, ge=0)
+    estoque_minimo: EstoqueMinimo = 0
 
 
 class ProdutoAtualizar(BaseModel):
@@ -55,12 +56,31 @@ class ProdutoAtualizar(BaseModel):
     subcategoria: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=60)] | None = None
     unidade: UnidadeProduto | None = None
     preco_venda: Preco | None = None
-    estoque_minimo: int | None = Field(None, ge=0)
+    estoque_minimo: EstoqueMinimo | None = None
     ativo: bool | None = None
 
 
 class ProdutoResposta(BaseModel):
-    model_config = ConfigDict(from_attributes=True)  # permite ler direto do objeto ORM
+    model_config = ConfigDict(
+        from_attributes=True,  # permite ler direto do objeto ORM
+        json_schema_extra={
+            "examples": [
+                {
+                    "id": 7,
+                    "sku": "DJ-MONO-20A",
+                    "nome": "Disjuntor Monopolar 20A Curva C",
+                    "descricao": None,
+                    "categoria": "ELETRICO",
+                    "subcategoria": "Disjuntores",
+                    "unidade": "UN",
+                    "preco_venda": "14.90",
+                    "estoque_atual": 13,
+                    "estoque_minimo": 40,
+                    "ativo": True,
+                }
+            ]
+        },
+    )
 
     id: int
     sku: str
