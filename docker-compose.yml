@@ -6,6 +6,10 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
       READONLY_DB_PASSWORD: ${READONLY_DB_PASSWORD:?defina READONLY_DB_PASSWORD no .env (veja .env.example)}
+      TZ: ${FUSO_HORARIO:-America/Sao_Paulo}
+    # Fuso das sessões do banco (now(), CURRENT_DATE, timestamptz -> date). Passado como parâmetro para
+    # valer também num volume já criado, cuja configuração gravada na criação diz UTC.
+    command: ["postgres", "-c", "timezone=${FUSO_HORARIO:-America/Sao_Paulo}", "-c", "log_timezone=${FUSO_HORARIO:-America/Sao_Paulo}"]
     ports:
       - "${POSTGRES_PORT:-5433}:5432"
     volumes:
@@ -29,6 +33,8 @@ services:
       # Opcionais: sem a chave, só o /ia/perguntar fica indisponível.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-opus-5-5}
+      # Fuso do negócio: define o "hoje" da API (vencimentos, filtros por dia, data enviada à IA).
+      TZ: ${FUSO_HORARIO:-America/Sao_Paulo}
     ports:
       - "8000:8000"
     healthcheck:  # "saudável" só depois de migrar e responder: `docker compose up --wait` passa a ser confiável

@@ -80,6 +80,7 @@ e, na primeira criação do volume, cria o usuário PostgreSQL somente leitura u
 - Para **habilitar a IA**, preencha `ANTHROPIC_API_KEY` no `.env` e reinicie. Sem a chave, só o `POST /ia/perguntar`
   responde `503`; todo o resto funciona normalmente. O modelo vem de `ANTHROPIC_MODEL` (padrão `claude-opus-5-5`;
   `claude-sonnet-5-5` ou `claude-haiku-5-5` são mais baratos).
+- API e banco rodam no horário de Brasília (`FUSO_HORARIO=America/Sao_Paulo` no `.env`); troque se a operação for em outro fuso.
 - Para recomeçar do zero: `docker compose exec api python -m app.seed --limpar`.
 - Se você já tinha um volume de banco criado antes do usuário somente leitura existir, rode uma vez
   `docker compose exec db sh /docker-entrypoint-initdb.d/01-somente-leitura.sh` (o script é idempotente).
@@ -346,9 +347,11 @@ Cada camada tem teste próprio: o de camada 5 contorna o parser de propósito, e
   silêncio) e têm teto (quantidade até 1.000.000; ids até o maior `INTEGER`). Um pedido cujo total não caberia na conta a
   receber é recusado já na criação. Como rede de segurança, qualquer valor que o banco recuse por estar fora do intervalo
   vira `422` em vez de `500`.
-- **Datas no fuso da aplicação.** Filtros por dia em colunas `timestamptz` são convertidos para o fuso do processo da API
-  (no Brasil, −03:00; no Docker, UTC). Comparar direto com uma data usaria o fuso do banco (UTC) e um pedido feito às 22h
-  cairia no dia seguinte. A IA recebe a data de hoje no prompt, pelo mesmo motivo.
+- **Datas no horário de Brasília.** No Docker, os containers da API e do banco rodam no fuso `FUSO_HORARIO`
+  (padrão `America/Sao_Paulo`): é ele que define o "hoje" dos vencimentos e dos filtros por dia. Além disso, os filtros por
+  dia em colunas `timestamptz` são convertidos explicitamente para o fuso da aplicação; comparar direto com uma data usaria o
+  fuso da sessão do banco, e um pedido feito às 22h poderia cair no dia seguinte. A IA recebe a data de hoje no prompt,
+  pelo mesmo motivo.
 - **Testes contra PostgreSQL real**, em banco separado, porque as regras dependem de recursos do Postgres (`CHECK`, `FOR UPDATE`,
   SQL dos relatórios). SQLite escondería bugs reais. Os valores esperados dos relatórios foram calculados à mão.
 - **Migrações com Alembic**, geradas por *autogenerate* e revisadas; convenção de nomes para as constraints.
@@ -428,7 +431,7 @@ Escolhas deliberadas de escopo, que viram a lista do que faria a seguir:
 - **Pagamento integral** (sem parcelas) e **pedidos não editáveis** depois de criados (cancela-se e cria-se outro).
 - **Pedido faturado ou entregue não pode ser cancelado**: exigiria cancelar a conta a receber e tratar a devolução.
 - **Relatórios sem paginação** (têm `limite`); para volumes grandes, paginar ou materializar.
-- **Fuso horário:** a API usa o fuso do processo. No Docker o container roda em UTC, então lá o "dia" vira às 21h de Brasília
-  (vencimentos e filtros por data). Para operar no horário de Brasília em produção, configurar o fuso do container.
+- **Um único fuso de operação** (`FUSO_HORARIO`): suficiente para uma distribuidora em um só fuso; atender filiais em fusos
+  diferentes exigiria guardar o fuso por cliente ou filial.
 - **IA:** a qualidade do SQL depende do modelo escolhido; a suíte valida as travas e o contrato com o SDK, não a qualidade das respostas
   de um modelo real. Uma recusa do modelo (`refusal`) vira `422` com mensagem clara, sem *fallback* automático para outro modelo.
