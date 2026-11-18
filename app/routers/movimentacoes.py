@@ -1,12 +1,10 @@
-from datetime import date
-
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.errors import RequisicaoInvalida
 from app.models import TipoMovimentacao
 from app.paginacao import Pagina, Paginacao, paginacao
+from app.periodo import Periodo, periodo
 from app.repositories import movimentacoes as repo
 from app.schemas.movimentacao import MovimentacaoCriar, MovimentacaoResposta
 from app.services import estoque
@@ -42,11 +40,8 @@ def registrar(dados: MovimentacaoCriar, db: Session = Depends(get_db)):
 def listar(
     produto_id: int | None = None,
     tipo: TipoMovimentacao | None = None,
-    data_inicio: date | None = None,
-    data_fim: date | None = None,
+    per: Periodo = Depends(periodo),
     p: Paginacao = Depends(paginacao),
     db: Session = Depends(get_db),
 ):
-    if data_inicio and data_fim and data_inicio > data_fim:
-        raise RequisicaoInvalida("data_inicio não pode ser posterior a data_fim.")
-    return repo.listar(db, p, produto_id=produto_id, tipo=tipo, data_inicio=data_inicio, data_fim=data_fim)
+    return repo.listar(db, p, produto_id=produto_id, tipo=tipo, data_inicio=per.data_inicio, data_fim=per.data_fim)

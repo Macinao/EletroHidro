@@ -1,12 +1,10 @@
-from datetime import date
-
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.errors import RequisicaoInvalida
 from app.models import StatusPedido
 from app.paginacao import Pagina, Paginacao, paginacao
+from app.periodo import Periodo, periodo
 from app.repositories import pedidos as repo
 from app.schemas.pedido import PedidoCriar, PedidoResposta
 from app.services import pedidos as service
@@ -44,14 +42,11 @@ def criar(dados: PedidoCriar, db: Session = Depends(get_db)):
 def listar(
     cliente_id: int | None = None,
     status: StatusPedido | None = None,
-    data_inicio: date | None = None,
-    data_fim: date | None = None,
+    per: Periodo = Depends(periodo),
     p: Paginacao = Depends(paginacao),
     db: Session = Depends(get_db),
 ):
-    if data_inicio and data_fim and data_inicio > data_fim:
-        raise RequisicaoInvalida("data_inicio não pode ser posterior a data_fim.")
-    return repo.listar(db, p, cliente_id=cliente_id, status=status, data_inicio=data_inicio, data_fim=data_fim)
+    return repo.listar(db, p, cliente_id=cliente_id, status=status, data_inicio=per.data_inicio, data_fim=per.data_fim)
 
 
 @router.get("/{pedido_id}", response_model=PedidoResposta, summary="Busca um pedido", responses=_404)
