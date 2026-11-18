@@ -119,7 +119,12 @@ def perguntar(
     cliente: anthropic.Anthropic, engine_leitura: Engine, settings: Settings, pergunta: str
 ) -> dict[str, Any]:
     sql_gerado = gerar_sql(cliente, settings, pergunta)
-    sql = validar_e_limitar(sql_gerado, tabelas_permitidas(), settings.ia_max_linhas)
+    try:
+        sql = validar_e_limitar(sql_gerado, tabelas_permitidas(), settings.ia_max_linhas)
+    except ConsultaInvalida as erro:
+        # Tentativa suspeita (ou erro do modelo): fica registrada em nível WARNING, com o SQL que foi recusado.
+        logger.warning("IA | consulta REJEITADA | pergunta=%r | sql_gerado=%s | motivo=%s", pergunta, sql_gerado, erro)
+        raise
     logger.info("IA | pergunta=%r | sql=%s", pergunta, sql)  # trilha de auditoria do que foi executado
 
     colunas, linhas = leitura.executar(engine_leitura, sql, settings.ia_timeout_segundos)
