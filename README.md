@@ -180,8 +180,9 @@ também é derivada (conta `PENDENTE` com vencimento no passado) em vez de grava
 
 ## Exemplos de requisições
 
-Os exemplos abaixo usam os dados do seed (o produto novo recebe o id 44). No Windows PowerShell, prefira o
-Swagger ou `Invoke-RestMethod`, pois as aspas e os acentos do `curl` se comportam de outro jeito.
+Os exemplos abaixo usam os dados do seed (o produto novo recebe o id 44). Nos terminais do Windows
+(PowerShell e também Git Bash), prefira o Swagger ou `Invoke-RestMethod`: aspas e acentos se comportam de outro jeito
+e um corpo com acentos mal codificado volta como `400`.
 
 **1. Cadastrar um produto** (nasce com estoque 0) e **dar entrada** no estoque:
 
@@ -227,6 +228,10 @@ curl -X POST localhost:8000/contas-receber/23/pagamento                # PAGO (s
 produto 44 não é baixada:
 
 ```bash
+curl -X POST localhost:8000/pedidos -H "Content-Type: application/json" -d '{
+  "cliente_id": 2, "itens": [ {"produto_id": 44, "quantidade": 1}, {"produto_id": 10, "quantidade": 5} ] }'
+# {"id":32,"status":"ABERTO", ...}
+
 curl -X POST localhost:8000/pedidos/32/confirmar
 # {"detail":"Estoque insuficiente para DJ-TRI-63A: saldo atual 0, movimentação de -5."}   (HTTP 409)
 ```

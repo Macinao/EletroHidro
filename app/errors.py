@@ -8,6 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 
 class ErroDeNegocio(Exception):
@@ -78,7 +79,20 @@ def _traduzir(erro: dict) -> dict[str, str]:
     return {"campo": ".".join(str(parte) for parte in erro["loc"][1:]), "mensagem": mensagem}
 
 
+# Erros gerados pelo próprio framework (rota inexistente, método errado, corpo ilegível) vêm em inglês.
+_ERROS_DO_FRAMEWORK = {
+    "Not Found": "Recurso não encontrado.",
+    "Method Not Allowed": "Método não permitido para este recurso.",
+    "There was an error parsing the body": "Não foi possível ler o corpo da requisição: envie um JSON válido em UTF-8.",
+}
+
+
 def registrar_handlers(app: FastAPI) -> None:
+    @app.exception_handler(StarletteHTTPException)
+    async def _erro_http_do_framework(_: Request, exc: StarletteHTTPException) -> JSONResponse:
+        detalhe = _ERROS_DO_FRAMEWORK.get(str(exc.detail), exc.detail)
+        return JSONResponse(status_code=exc.status_code, content={"detail": detalhe}, headers=exc.headers)
+
     @app.exception_handler(ErroDeNegocio)
     async def _erro_de_negocio(_: Request, exc: ErroDeNegocio) -> JSONResponse:
         return JSONResponse(status_code=exc.status_code, content={"detail": str(exc)})

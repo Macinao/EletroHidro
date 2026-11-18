@@ -101,3 +101,20 @@ def test_consulta_rejeitada_tambem_fica_no_log_de_auditoria(client, ia_fake, cap
     assert len(avisos) == 1
     mensagem = avisos[0].getMessage()
     assert "REJEITADA" in mensagem and "DROP TABLE produtos" in mensagem and "apague a tabela" in mensagem
+
+
+def test_erros_do_framework_tambem_vem_em_portugues(client):
+    """Rota inexistente, método errado e corpo ilegível não podem vazar mensagens em inglês."""
+    r = client.get("/rota-que-nao-existe")
+    assert r.status_code == 404 and r.json() == {"detail": "Recurso não encontrado."}
+
+    r = client.delete("/saude")
+    assert r.status_code == 405 and r.json() == {"detail": "Método não permitido para este recurso."}
+    assert "GET" in r.headers["allow"]  # os cabeçalhos do erro original são preservados
+
+    cabecalho = {"Content-Type": "application/json"}
+    r = client.post("/produtos", content=b'{"sku": "\xe9"}', headers=cabecalho)  # UTF-8 inválido (Latin-1 solto)
+    assert r.status_code == 400 and "UTF-8" in r.json()["detail"]
+
+    r = client.post("/produtos", content=b'{"sku": ', headers=cabecalho)  # JSON malformado
+    assert r.status_code == 422 and r.json()["erros"][0]["mensagem"] == "JSON inválido"
