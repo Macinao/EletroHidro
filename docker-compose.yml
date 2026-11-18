@@ -33,6 +33,8 @@ services:
       # Opcionais: sem a chave, só o /ia/perguntar fica indisponível.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-opus-5-5}
+      IA_MAX_LINHAS: ${IA_MAX_LINHAS:-100}
+      IA_TIMEOUT_SEGUNDOS: ${IA_TIMEOUT_SEGUNDOS:-5}
       # Fuso do negócio: define o "hoje" da API (vencimentos, filtros por dia, data enviada à IA).
       TZ: ${FUSO_HORARIO:-America/Sao_Paulo}
     ports:
