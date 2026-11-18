@@ -26,6 +26,24 @@ class Conflito(ErroDeNegocio):
     status_code = 409
 
 
+class ConsultaInvalida(ErroDeNegocio):
+    """Pergunta/consulta da IA que não pode ser atendida (rejeitada, recusada, falhou ou estourou o tempo)."""
+
+    status_code = 422
+
+
+class FalhaExterna(ErroDeNegocio):
+    """Falha em serviço externo (API da Anthropic)."""
+
+    status_code = 502
+
+
+class ServicoIndisponivel(ErroDeNegocio):
+    """Recurso opcional não configurado (ex.: IA sem ANTHROPIC_API_KEY)."""
+
+    status_code = 503
+
+
 def violou(erro: IntegrityError, constraint: str) -> bool:
     """True se o erro do banco foi causado exatamente por essa constraint (psycopg 3)."""
     diag = getattr(erro.orig, "diag", None)
