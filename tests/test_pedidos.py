@@ -46,7 +46,8 @@ def test_criar_pedido_validacoes(client, criar_cliente, criar_produto):
 
     assert client.post("/pedidos", json={"cliente_id": cliente["id"], "itens": []}).status_code == 422
     assert client.post("/pedidos", json={"cliente_id": cliente["id"], "itens": [{**item, "quantidade": 0}]}).status_code == 422
-    assert client.post("/pedidos", json={"cliente_id": cliente["id"], "itens": [item, item]}).status_code == 422
+    repetido = client.post("/pedidos", json={"cliente_id": cliente["id"], "itens": [item, item]})
+    assert repetido.status_code == 422 and repetido.json()["erros"][0]["campo"] == "itens"
     assert client.post("/pedidos", json={"cliente_id": 999, "itens": [item]}).status_code == 404
     assert client.post("/pedidos", json={"cliente_id": cliente["id"], "itens": [{**item, "produto_id": 999}]}).status_code == 404
 

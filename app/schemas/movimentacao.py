@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Annotated, Self
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, StringConstraints, model_validator
+from pydantic import BaseModel, ConfigDict, StringConstraints, ValidationInfo, field_validator
 
 from app.models import TipoMovimentacao
 
@@ -22,13 +22,15 @@ class MovimentacaoCriar(BaseModel):
     quantidade: int  # ENTRADA/SAIDA: positiva. AJUSTE: com sinal (+ sobra, - perda).
     motivo: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=200)]
 
-    @model_validator(mode="after")
-    def _quantidade_coerente_com_tipo(self) -> Self:
-        if self.quantidade == 0:
+    @field_validator("quantidade")
+    @classmethod
+    def _quantidade_coerente_com_tipo(cls, quantidade: int, info: ValidationInfo) -> int:
+        if quantidade == 0:
             raise ValueError("A quantidade não pode ser zero.")
-        if self.tipo != TipoMovimentacao.AJUSTE and self.quantidade < 0:
+        tipo = info.data.get("tipo")
+        if tipo is not None and tipo != TipoMovimentacao.AJUSTE and quantidade < 0:
             raise ValueError("Em ENTRADA e SAIDA a quantidade deve ser positiva; só AJUSTE aceita valor negativo.")
-        return self
+        return quantidade
 
 
 class MovimentacaoResposta(BaseModel):

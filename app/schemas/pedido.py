@@ -1,8 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models import StatusPedido
 
@@ -26,12 +25,13 @@ class PedidoCriar(BaseModel):
     cliente_id: int
     itens: list[ItemCriar] = Field(min_length=1)
 
-    @model_validator(mode="after")
-    def _sem_produto_repetido(self) -> Self:
-        ids = [item.produto_id for item in self.itens]
+    @field_validator("itens")
+    @classmethod
+    def _sem_produto_repetido(cls, itens: list[ItemCriar]) -> list[ItemCriar]:
+        ids = [item.produto_id for item in itens]
         if len(ids) != len(set(ids)):
             raise ValueError("Produto repetido nos itens; some as quantidades em um único item.")
-        return self
+        return itens
 
 
 class ItemResposta(BaseModel):

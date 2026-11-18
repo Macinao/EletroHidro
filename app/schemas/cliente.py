@@ -1,7 +1,7 @@
 import re
-from typing import Annotated, Self
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, StringConstraints, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, StringConstraints, ValidationInfo, field_validator
 
 from app.models import TipoCliente
 from app.validadores import cnpj_valido, cpf_valido
@@ -53,16 +53,14 @@ class ClienteCriar(BaseModel):
 
     @field_validator("documento")
     @classmethod
-    def _so_digitos(cls, valor: str) -> str:
-        return re.sub(r"\D", "", valor)
-
-    @model_validator(mode="after")
-    def _documento_confere_com_tipo(self) -> Self:
-        if self.tipo == TipoCliente.PF and not cpf_valido(self.documento):
+    def _documento_valido(cls, valor: str, info: ValidationInfo) -> str:
+        digitos = re.sub(r"\D", "", valor)  # aceita com ou sem máscara
+        tipo = info.data.get("tipo")  # "tipo" é declarado antes, então já foi validado aqui
+        if tipo == TipoCliente.PF and not cpf_valido(digitos):
             raise ValueError("CPF inválido.")
-        if self.tipo == TipoCliente.PJ and not cnpj_valido(self.documento):
+        if tipo == TipoCliente.PJ and not cnpj_valido(digitos):
             raise ValueError("CNPJ inválido.")
-        return self
+        return digitos
 
 
 class ClienteAtualizar(BaseModel):

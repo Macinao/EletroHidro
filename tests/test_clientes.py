@@ -16,7 +16,7 @@ def test_cliente_pf_com_cpf(client):
 def test_cpf_invalido_retorna_422(client):
     r = client.post("/clientes", json={**CLIENTE_BASE, "tipo": "PF", "documento": "111.111.111-11"})
     assert r.status_code == 422
-    assert r.json()["erros"][0]["mensagem"] == "CPF inválido."
+    assert r.json()["erros"] == [{"campo": "documento", "mensagem": "CPF inválido."}]
 
 
 def test_cnpj_em_cliente_pf_retorna_422(client):
