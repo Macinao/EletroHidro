@@ -22,13 +22,25 @@ def dados(client, sessao, criar_cliente, criar_produto):
     b = criar_cliente(documento="11.444.777/0001-61", nome="Beta Instalações", cidade="Belo Horizonte", uf="MG")
     dj = criar_produto(sku="DJ", nome="Disjuntor", subcategoria="Disjuntores", preco_venda="30.00", estoque=1000)
     cb = criar_produto(sku="CB", nome="Cabo", subcategoria="Cabos", preco_venda="100.00", estoque=1000)
-    tb = criar_produto(sku="TB", nome="Tubo", categoria="HIDRAULICO", subcategoria="Tubos", unidade="M", preco_venda="20.00", estoque=1000)
+    tb = criar_produto(
+        sku="TB",
+        nome="Tubo",
+        categoria="HIDRAULICO",
+        subcategoria="Tubos",
+        unidade="M",
+        preco_venda="20.00",
+        estoque=1000,
+    )
 
     def pedido(cliente, itens, ate, emissao=None, vencimento=None, pago=False):
         corpo = {"cliente_id": cliente["id"], "itens": [{"produto_id": p["id"], "quantidade": q} for p, q in itens]}
         pid = client.post("/pedidos", json=corpo).json()["id"]
-        etapas = {"CANCELADO": ["cancelar"], "CONFIRMADO": ["confirmar"], "FATURADO": ["confirmar", "faturar"],
-                  "ENTREGUE": ["confirmar", "faturar", "entregar"]}[ate]
+        etapas = {
+            "CANCELADO": ["cancelar"],
+            "CONFIRMADO": ["confirmar"],
+            "FATURADO": ["confirmar", "faturar"],
+            "ENTREGUE": ["confirmar", "faturar", "entregar"],
+        }[ate]
         for etapa in etapas:
             assert client.post(f"/pedidos/{pid}/{etapa}").status_code == 200
         if pago:
@@ -52,7 +64,10 @@ def dados(client, sessao, criar_cliente, criar_produto):
 
 
 def _resumo(linhas: list[dict], *campos: str) -> list[tuple]:
-    return [tuple(Decimal(l[c]) if c in ("faturamento", "total_vencido") else l[c] for c in campos) for l in linhas]
+    return [
+        tuple(Decimal(linha[c]) if c in ("faturamento", "total_vencido") else linha[c] for c in campos)
+        for linha in linhas
+    ]
 
 
 # ---------- 1. produtos mais vendidos ----------
@@ -69,7 +84,9 @@ def test_produtos_mais_vendidos(client, dados):
 
 
 def test_produtos_mais_vendidos_com_filtros(client, dados):
-    fevereiro = client.get("/relatorios/produtos-mais-vendidos", params={"data_inicio": "2025-02-01", "data_fim": "2025-02-28"})
+    fevereiro = client.get(
+        "/relatorios/produtos-mais-vendidos", params={"data_inicio": "2025-02-01", "data_fim": "2025-02-28"}
+    )
     assert _resumo(fevereiro.json(), "sku", "quantidade_vendida") == [("TB", 30), ("DJ", 5)]
 
     eletricos = client.get("/relatorios/produtos-mais-vendidos", params={"categoria": "ELETRICO"})
@@ -90,7 +107,7 @@ def test_faturamento_por_categoria_e_mes(client, dados):
         ("2025-03", "HIDRAULICO", Decimal("20.00"), 1),
     ]
     sem_janeiro = client.get("/relatorios/faturamento-por-categoria-mes", params={"data_inicio": "2025-02-01"}).json()
-    assert [l["mes"] for l in sem_janeiro] == ["2025-02", "2025-02", "2025-03"]
+    assert [linha["mes"] for linha in sem_janeiro] == ["2025-02", "2025-02", "2025-03"]
 
 
 # ---------- 3. ranking de clientes ----------
@@ -116,9 +133,9 @@ def test_ranking_filtrado_por_uf_e_periodo(client, dados):
 
 
 def test_estoque_abaixo_do_minimo(client, criar_produto):
-    criar_produto(sku="BAIXO", nome="Disjuntor Baixo", subcategoria="Disjuntores", estoque=3)       # falta 7
-    criar_produto(sku="ZERADO", nome="Tomada Zerada", subcategoria="Tomadas")                        # falta 10
-    criar_produto(sku="NOLIMITE", nome="Cabo no limite", subcategoria="Cabos", estoque=10)            # = mínimo: não entra
+    criar_produto(sku="BAIXO", nome="Disjuntor Baixo", subcategoria="Disjuntores", estoque=3)  # falta 7
+    criar_produto(sku="ZERADO", nome="Tomada Zerada", subcategoria="Tomadas")  # falta 10
+    criar_produto(sku="NOLIMITE", nome="Cabo no limite", subcategoria="Cabos", estoque=10)  # = mínimo: não entra
     criar_produto(sku="OK", nome="Cabo ok", subcategoria="Cabos", estoque=50)
     criar_produto(sku="HID", nome="Tubo baixo", categoria="HIDRAULICO", subcategoria="Tubos", estoque=9)  # falta 1
     inativo = criar_produto(sku="INATIVO", nome="Inativo", subcategoria="Cabos", estoque=1)
@@ -157,12 +174,23 @@ def test_contas_vencidas_com_data_de_referencia(client, dados):
 
 
 def test_parametros_invalidos(client):
-    assert client.get("/relatorios/produtos-mais-vendidos", params={"data_inicio": "2025-02-01", "data_fim": "2025-01-01"}).status_code == 400
+    assert (
+        client.get(
+            "/relatorios/produtos-mais-vendidos", params={"data_inicio": "2025-02-01", "data_fim": "2025-01-01"}
+        ).status_code
+        == 400
+    )
     assert client.get("/relatorios/ranking-clientes", params={"limite": 0}).status_code == 422
     assert client.get("/relatorios/ranking-clientes", params={"uf": "SAO"}).status_code == 422
 
 
 def test_relatorios_vazios_retornam_lista_vazia(client):
-    for rota in ["produtos-mais-vendidos", "faturamento-por-categoria-mes", "ranking-clientes", "estoque-abaixo-do-minimo", "contas-vencidas"]:
+    for rota in [
+        "produtos-mais-vendidos",
+        "faturamento-por-categoria-mes",
+        "ranking-clientes",
+        "estoque-abaixo-do-minimo",
+        "contas-vencidas",
+    ]:
         r = client.get(f"/relatorios/{rota}")
         assert r.status_code == 200 and r.json() == [], rota

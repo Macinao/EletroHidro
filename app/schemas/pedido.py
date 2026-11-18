@@ -18,7 +18,9 @@ class PedidoCriar(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
         json_schema_extra={
-            "examples": [{"cliente_id": 1, "itens": [{"produto_id": 1, "quantidade": 10}, {"produto_id": 5, "quantidade": 3}]}]
+            "examples": [
+                {"cliente_id": 1, "itens": [{"produto_id": 1, "quantidade": 10}, {"produto_id": 5, "quantidade": 3}]}
+            ]
         },
     )
 

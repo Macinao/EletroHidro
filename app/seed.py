@@ -9,7 +9,7 @@ sentido aos relatórios por mês e às contas vencidas. É determinístico (seme
 
 import argparse
 import random
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import UTC, date, datetime, time, timedelta
 
 from sqlalchemy import func, select, text, update
 from sqlalchemy.orm import Session
@@ -21,6 +21,7 @@ from app.models import (
     MovimentacaoEstoque,
     Pedido,
     Produto,
+    TipoCliente,
     TipoMovimentacao,
 )
 from app.schemas.cliente import ClienteCriar
@@ -77,10 +78,26 @@ PRODUTOS = [
 ]  # fmt: skip
 
 # Produto descontinuado: existe no cadastro, mas está inativo e fora das vendas.
-PRODUTO_INATIVO = ("LAMP-FLUOR-20W", "Lâmpada Fluorescente Tubular 20W (descontinuada)", "ELETRICO", "Iluminação", "UN", "7.50", 0)
+PRODUTO_INATIVO = (
+    "LAMP-FLUOR-20W",
+    "Lâmpada Fluorescente Tubular 20W (descontinuada)",
+    "ELETRICO",
+    "Iluminação",
+    "UN",
+    "7.50",
+    0,
+)
 
 # Produtos que terminam o seed abaixo do mínimo (alimentam o relatório de reposição).
-SKUS_ESTOQUE_BAIXO = ["DJ-MONO-20A", "DJ-MONO-32A", "DJ-TRI-63A", "CAB-FLEX-2.5-VM", "TUBO-PVC-25", "REG-ESF-25", "TORN-LAV-BAIXA"]
+SKUS_ESTOQUE_BAIXO = [
+    "DJ-MONO-20A",
+    "DJ-MONO-32A",
+    "DJ-TRI-63A",
+    "CAB-FLEX-2.5-VM",
+    "TUBO-PVC-25",
+    "REG-ESF-25",
+    "TORN-LAV-BAIXA",
+]
 
 # (tipo, documento-base, nome, cidade, uf, contato). Os dígitos verificadores são calculados.
 CLIENTES = [
@@ -109,13 +126,13 @@ def _cnpj(base12: str) -> str:
     pesos = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
     digitos = base12
     for n in (12, 13):
-        resto = sum(int(d) * p for d, p in zip(digitos[:n], pesos[13 - n :])) % 11
+        resto = sum(int(d) * p for d, p in zip(digitos[:n], pesos[13 - n :], strict=True)) % 11
         digitos += str(0 if resto < 2 else 11 - resto)
     return digitos
 
 
 def _momento(dia: date, rng: random.Random) -> datetime:
-    return datetime.combine(dia, time(rng.randint(8, 17), rng.randint(0, 59)), tzinfo=timezone.utc)
+    return datetime.combine(dia, time(rng.randint(8, 17), rng.randint(0, 59)), tzinfo=UTC)
 
 
 def _quantidade(produto: Produto, rng: random.Random) -> int:
@@ -161,24 +178,33 @@ def popular(db: Session, hoje: date | None = None, semente: int = 42, total_pedi
     for tipo, base, nome, cidade, uf, contato in CLIENTES:
         documento = _cnpj(base) if tipo == "PJ" else _cpf(base)
         clientes.append(
-            clientes_service.criar(db, ClienteCriar(tipo=tipo, documento=documento, nome=nome, cidade=cidade, uf=uf, contato=contato))
+            clientes_service.criar(
+                db, ClienteCriar(tipo=TipoCliente(tipo), documento=documento, nome=nome, cidade=cidade, uf=uf, contato=contato)
+            )
         )  # fmt: skip
 
     # --- estoque inicial: uma ENTRADA por produto, recuada para ~6 meses atrás ---
     for p in produtos:
-        estoque.registrar(db, p.id, TipoMovimentacao.ENTRADA, p.estoque_minimo * 10, "Estoque inicial - inventário de abertura")
+        estoque.registrar(
+            db, p.id, TipoMovimentacao.ENTRADA, p.estoque_minimo * 10, "Estoque inicial - inventário de abertura"
+        )
     db.execute(update(MovimentacaoEstoque).values(data_hora=_momento(hoje - timedelta(days=185), rng)))
     db.commit()
 
     # --- pedidos espalhados pelos últimos meses ---
-    dias_atras = sorted((max(1, 172 - round(i * 5.86) + rng.randint(-2, 2)) for i in range(total_pedidos)), reverse=True)
+    dias_atras = sorted(
+        (max(1, 172 - round(i * 5.86) + rng.randint(-2, 2)) for i in range(total_pedidos)), reverse=True
+    )
     status_finais = _status_por_posicao(total_pedidos)
     pesos_clientes = [8, 6, 5, 4, 3, 3, 2, 2, 2, 1]
 
-    for posicao, (dias, status_final) in enumerate(zip(dias_atras, status_finais)):
+    for posicao, (dias, status_final) in enumerate(zip(dias_atras, status_finais, strict=True)):
         dia = hoje - timedelta(days=dias)
         cliente = rng.choices(clientes, weights=pesos_clientes)[0]
-        itens = [ItemCriar(produto_id=p.id, quantidade=_quantidade(p, rng)) for p in rng.sample(produtos, rng.choice([1, 2, 2, 3, 3, 4]))]
+        itens = [
+            ItemCriar(produto_id=p.id, quantidade=_quantidade(p, rng))
+            for p in rng.sample(produtos, rng.choice([1, 2, 2, 3, 3, 4]))
+        ]
         pedido = pedidos_service.criar(db, PedidoCriar(cliente_id=cliente.id, itens=itens))
 
         if status_final == "CANCELADO_ABERTO":
@@ -195,7 +221,9 @@ def popular(db: Session, hoje: date | None = None, semente: int = 42, total_pedi
         # Recua as datas (a API sempre usa "agora"): pedido, movimentações e conta a receber.
         momento = _momento(dia, rng)
         db.execute(update(Pedido).where(Pedido.id == pedido.id).values(data_pedido=momento))
-        db.execute(update(MovimentacaoEstoque).where(MovimentacaoEstoque.pedido_id == pedido.id).values(data_hora=momento))
+        db.execute(
+            update(MovimentacaoEstoque).where(MovimentacaoEstoque.pedido_id == pedido.id).values(data_hora=momento)
+        )
         conta = db.scalar(select(ContaReceber).where(ContaReceber.pedido_id == pedido.id))
         if conta is not None:
             emissao = min(dia + timedelta(days=rng.randint(0, 2)), hoje)
@@ -211,16 +239,23 @@ def popular(db: Session, hoje: date | None = None, semente: int = 42, total_pedi
     # --- contagem física: alguns produtos terminam abaixo do mínimo ---
     por_sku = {p.sku: p for p in produtos}
     for sku in SKUS_ESTOQUE_BAIXO:
-        p = db.get(Produto, por_sku[sku].id)
-        alvo = rng.choice([0, p.estoque_minimo // 3, p.estoque_minimo // 2])
-        estoque.registrar(db, p.id, TipoMovimentacao.AJUSTE, alvo - p.estoque_atual, "Ajuste de inventário (contagem física)")
+        produto = db.get(Produto, por_sku[sku].id)
+        assert produto is not None
+        alvo = rng.choice([0, produto.estoque_minimo // 3, produto.estoque_minimo // 2])
+        estoque.registrar(
+            db,
+            produto.id,
+            TipoMovimentacao.AJUSTE,
+            alvo - produto.estoque_atual,
+            "Ajuste de inventário (contagem física)",
+        )
 
     return {
-        "produtos": db.scalar(select(func.count()).select_from(Produto)),
-        "clientes": db.scalar(select(func.count()).select_from(Cliente)),
-        "pedidos": db.scalar(select(func.count()).select_from(Pedido)),
-        "contas_receber": db.scalar(select(func.count()).select_from(ContaReceber)),
-        "movimentacoes": db.scalar(select(func.count()).select_from(MovimentacaoEstoque)),
+        "produtos": db.scalar(select(func.count()).select_from(Produto)) or 0,
+        "clientes": db.scalar(select(func.count()).select_from(Cliente)) or 0,
+        "pedidos": db.scalar(select(func.count()).select_from(Pedido)) or 0,
+        "contas_receber": db.scalar(select(func.count()).select_from(ContaReceber)) or 0,
+        "movimentacoes": db.scalar(select(func.count()).select_from(MovimentacaoEstoque)) or 0,
     }
 
 

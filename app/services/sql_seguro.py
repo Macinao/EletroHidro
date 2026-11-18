@@ -27,9 +27,13 @@ _NOS_PROIBIDOS = tuple(
     if hasattr(exp, nome)
 )  # fmt: skip
 
-# Funções que leem arquivos, abrem conexões, mudam configuração ou executam SQL em texto.
+# Funções que leem arquivos, abrem conexões, mudam configuração/sequências ou executam SQL em texto.
 _PREFIXOS_FUNCAO_PROIBIDOS = ("pg_", "lo_", "dblink")
-_FUNCOES_PROIBIDAS = {"set_config", "query_to_xml", "query_to_xml_and_xmlschema", "table_to_xml", "cursor_to_xml"}
+_FUNCOES_PROIBIDAS = {
+    "set_config", "query_to_xml", "query_to_xml_and_xmlschema", "table_to_xml", "cursor_to_xml",
+    "nextval", "setval", "currval", "lastval",  # mexem em sequências: escrita disfarçada de SELECT
+    "current_setting", "version",  # revelam configuração/versão do servidor
+}  # fmt: skip
 
 
 def _rejeitar(motivo: str) -> ConsultaInvalida:
@@ -37,7 +41,15 @@ def _rejeitar(motivo: str) -> ConsultaInvalida:
 
 
 def _nome_funcao(funcao: exp.Func) -> str:
-    return (funcao.name if isinstance(funcao, exp.Anonymous) else funcao.sql_name()).lower()
+    """Nome da função COMO O POSTGRESQL A ENXERGA.
+
+    Funções desconhecidas pelo sqlglot (pg_sleep, nextval...) são `Anonymous` e já trazem o nome. Para as
+    conhecidas, o nome interno do sqlglot pode diferir (version() vira CurrentVersion), então usamos o SQL
+    regenerado para PostgreSQL.
+    """
+    if isinstance(funcao, exp.Anonymous):
+        return funcao.name.lower()
+    return funcao.sql(dialect="postgres").partition("(")[0].strip().lower()
 
 
 def validar_e_limitar(sql: str, tabelas_permitidas: set[str], max_linhas: int) -> str:

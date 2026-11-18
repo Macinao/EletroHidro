@@ -1,0 +1,21 @@
+# Configuração das ferramentas de qualidade (não é um pacote instalável).
+#   ruff check .      -> lint (PEP 8, imports, bugs comuns)
+#   ruff format .     -> formatação
+#   mypy app          -> tipagem estática
+
+[tool.ruff]
+line-length = 120
+extend-exclude = ["alembic/versions"]  # migrações geradas pelo Alembic
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "C4"]
+ignore = [
+    "B008",  # Depends()/Query() como valor padrão de argumento é o idioma do FastAPI
+]
+
+[tool.ruff.lint.per-file-ignores]
+"app/seed.py" = ["E501"]  # tabelas de dados de demonstração, uma linha por registro
+"tests/*" = ["E501"]  # trechos de SQL em strings
+
+[tool.mypy]
+ignore_missing_imports = true

@@ -5,12 +5,13 @@ from app.database import get_db
 from app.models import StatusConta
 from app.paginacao import Pagina, Paginacao, paginacao
 from app.repositories import contas_receber as repo
+from app.routers import Respostas
 from app.schemas.conta_receber import ContaReceberResposta, PagamentoEntrada
 from app.services import contas_receber as service
 
 router = APIRouter(prefix="/contas-receber", tags=["Financeiro"])
 
-_404 = {404: {"description": "Conta a receber não encontrada."}}
+_404: Respostas = {404: {"description": "Conta a receber não encontrada."}}
 
 
 @router.get(

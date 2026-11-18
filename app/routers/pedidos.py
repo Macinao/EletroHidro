@@ -6,13 +6,14 @@ from app.models import StatusPedido
 from app.paginacao import Pagina, Paginacao, paginacao
 from app.periodo import Periodo, periodo
 from app.repositories import pedidos as repo
+from app.routers import Respostas
 from app.schemas.pedido import PedidoCriar, PedidoResposta
 from app.services import pedidos as service
 
 router = APIRouter(prefix="/pedidos", tags=["Pedidos"])
 
-_404 = {404: {"description": "Pedido não encontrado."}}
-_409 = {409: {"description": "Transição de status inválida para o estado atual do pedido."}}
+_404: Respostas = {404: {"description": "Pedido não encontrado."}}
+_409: Respostas = {409: {"description": "Transição de status inválida para o estado atual do pedido."}}
 
 
 @router.post(
@@ -96,7 +97,9 @@ def entregar(pedido_id: int, db: Session = Depends(get_db)):
     "/{pedido_id}/cancelar",
     response_model=PedidoResposta,
     summary="Cancela um pedido ABERTO ou CONFIRMADO",
-    description="Se estiver CONFIRMADO, o estoque é estornado (ENTRADA por item). Pedidos faturados não podem ser cancelados.",
+    description=(
+        "Se estiver CONFIRMADO, o estoque é estornado (ENTRADA por item). Pedidos faturados não podem ser cancelados."
+    ),
     responses={**_404, 409: {"description": "Pedido já faturado, entregue ou cancelado."}},
 )
 def cancelar(pedido_id: int, db: Session = Depends(get_db)):

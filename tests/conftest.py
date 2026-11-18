@@ -84,7 +84,9 @@ def engine_ro(engine):
     with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conexao:
         if not conexao.scalar(text("SELECT 1 FROM pg_roles WHERE rolname = :u"), {"u": usuario}):
             conexao.connection.driver_connection.execute(
-                psql.SQL("CREATE ROLE {} LOGIN PASSWORD {}").format(psql.Identifier(usuario), psql.Literal(url_ro.password))
+                psql.SQL("CREATE ROLE {} LOGIN PASSWORD {}").format(
+                    psql.Identifier(usuario), psql.Literal(url_ro.password)
+                )
             )
         # As tabelas do banco de teste são recriadas a cada sessão: reconcede o SELECT.
         conexao.execute(text(f'GRANT USAGE ON SCHEMA public TO "{usuario}"'))

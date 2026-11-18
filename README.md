@@ -103,6 +103,8 @@ docker compose up -d db
 pytest
 ```
 
+Qualidade estática (configurada em `pyproject.toml`): `ruff check .`, `ruff format --check .` e `mypy app`; todos passam sem avisos.
+
 A suíte (mais de 150 testes) usa um banco **separado** (`<nome do banco>_test`, criado automaticamente), então os dados de
 desenvolvimento nunca são tocados. **Nenhum teste chama a API real da Anthropic**: o cliente é sempre simulado, e
 a fixture do cliente real dispara erro se algum teste tentar usá-lo.
@@ -236,7 +238,7 @@ curl "localhost:8000/produtos?categoria=ELETRICO&subcategoria=Disjuntores&tamanh
 curl "localhost:8000/pedidos?status=CONFIRMADO&data_inicio=2026-10-01"
 ```
 
-**7. Relatórios** (todos aceitam período; veja o Swagger para os demais filtros):
+**7. Relatórios** (os de vendas aceitam `data_inicio`/`data_fim`; veja o Swagger para os demais filtros):
 
 ```bash
 curl "localhost:8000/relatorios/produtos-mais-vendidos?limite=3"
@@ -312,6 +314,7 @@ independentes, e as do banco continuam valendo mesmo que as da aplicação falhe
 | 4 | **LIMIT máximo** | aplicação | `LIMIT` imposto (`IA_MAX_LINHAS`, padrão 100); a resposta indica `truncado`. |
 | 5 | **Usuário somente leitura** | banco | `eletrohidro_ro` só tem `GRANT SELECT`. Mesmo um `DELETE` que passasse pelo parser levaria `permission denied`. |
 | 6 | **Transação `READ ONLY` + timeout** | banco | O papel força `default_transaction_read_only` e `statement_timeout`; a execução abre a transação como `READ ONLY` e cancela a consulta após `IA_TIMEOUT_SEGUNDOS` (padrão 5). |
+| 7 | **Trilha de auditoria** | aplicação | Toda consulta executada é registrada no log (`app.services.ia`) com a pergunta e o SQL. |
 
 Cada camada tem teste próprio: o de camada 5 contorna o parser de propósito, e o `SELECT pg_sleep()` contorna o validador para provar o timeout.
 

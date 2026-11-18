@@ -41,7 +41,9 @@ def criar(db: Session, dados: PedidoCriar) -> Pedido:
         cliente_id=dados.cliente_id,
         itens=[
             # Preço congelado agora; o estoque só é verificado ao CONFIRMAR.
-            ItemPedido(produto_id=i.produto_id, quantidade=i.quantidade, preco_unitario=produtos[i.produto_id].preco_venda)
+            ItemPedido(
+                produto_id=i.produto_id, quantidade=i.quantidade, preco_unitario=produtos[i.produto_id].preco_venda
+            )
             for i in dados.itens
         ],
     )
@@ -68,7 +70,9 @@ def _travar(db: Session, pedido_id: int) -> Pedido:
 
 def _exigir_status(pedido: Pedido, esperado: StatusPedido, acao: str) -> None:
     if pedido.status != esperado:
-        raise Conflito(f"Não é possível {acao} o pedido {pedido.id}: ele está {pedido.status} e precisa estar {esperado}.")
+        raise Conflito(
+            f"Não é possível {acao} o pedido {pedido.id}: ele está {pedido.status} e precisa estar {esperado}."
+        )
 
 
 def _itens_em_ordem(pedido: Pedido) -> list[ItemPedido]:
@@ -124,7 +128,12 @@ def cancelar(db: Session, pedido_id: int) -> Pedido:
             # O estoque já foi baixado: devolve cada item com uma ENTRADA rastreável ao pedido.
             for item in _itens_em_ordem(pedido):
                 estoque.aplicar_movimentacao(
-                    db, item.produto_id, TipoMovimentacao.ENTRADA, item.quantidade, f"Estorno - pedido #{pedido.id}", pedido.id
+                    db,
+                    item.produto_id,
+                    TipoMovimentacao.ENTRADA,
+                    item.quantidade,
+                    f"Estorno - pedido #{pedido.id}",
+                    pedido.id,
                 )
         elif pedido.status != StatusPedido.ABERTO:
             # FATURADO/ENTREGUE exigiriam cancelar a conta a receber e a entrega: fora do escopo.

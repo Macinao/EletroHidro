@@ -7,9 +7,7 @@ from app.models import Cliente, TipoCliente
 from app.paginacao import Paginacao, paginar
 
 
-def listar(
-    db: Session, p: Paginacao, *, tipo: TipoCliente | None, uf: str | None, busca: str | None
-) -> dict[str, Any]:
+def listar(db: Session, p: Paginacao, *, tipo: TipoCliente | None, uf: str | None, busca: str | None) -> dict[str, Any]:
     consulta = select(Cliente).order_by(Cliente.nome, Cliente.id)
     if tipo:
         consulta = consulta.where(Cliente.tipo == tipo)

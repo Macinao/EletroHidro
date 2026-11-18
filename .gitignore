@@ -3,3 +3,9 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .env
+
+# artefatos de ferramentas de qualidade
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/

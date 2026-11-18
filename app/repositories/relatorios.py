@@ -54,7 +54,9 @@ def produtos_mais_vendidos(
     )
 
 
-def faturamento_por_categoria_e_mes(db: Session, data_inicio: date | None, data_fim: date | None) -> list[dict[str, Any]]:
+def faturamento_por_categoria_e_mes(
+    db: Session, data_inicio: date | None, data_fim: date | None
+) -> list[dict[str, Any]]:
     return _executar(
         db,
         """

@@ -34,4 +34,5 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     # lru_cache = singleton simples (no Spring, o container de beans faz isso).
-    return Settings()
+    # O mypy não enxerga que o pydantic-settings preenche os campos a partir do ambiente (.env / variáveis).
+    return Settings()  # type: ignore[call-arg]

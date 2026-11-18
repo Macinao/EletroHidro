@@ -117,7 +117,9 @@ class Pedido(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     cliente_id: Mapped[int] = mapped_column(ForeignKey("clientes.id"), index=True)
-    status: Mapped[StatusPedido] = mapped_column(_enum(StatusPedido, "status_pedido"), default=StatusPedido.ABERTO, index=True)
+    status: Mapped[StatusPedido] = mapped_column(
+        _enum(StatusPedido, "status_pedido"), default=StatusPedido.ABERTO, index=True
+    )
     data_pedido: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
 
     cliente: Mapped[Cliente] = relationship()

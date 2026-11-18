@@ -90,6 +90,10 @@ def test_preserva_limit_menor_e_reduz_o_maior():
         "SELECT lo_import('/etc/passwd')",
         "SELECT set_config('statement_timeout', '0', false)",
         "SELECT query_to_xml('DELETE FROM produtos', true, true, '')",
+        "SELECT nextval('produtos_id_seq')",
+        "SELECT setval('produtos_id_seq', 1000)",
+        "SELECT current_setting('server_version')",
+        "SELECT version()",
         # --- lixo ---
         "",
         "   ",
@@ -118,7 +122,13 @@ def test_executor_le_normalmente(engine_ro, um_produto):
 
 def test_banco_recusa_escrita_mesmo_sem_o_validador(engine_ro, client, um_produto):
     """Se o validador falhasse, o próprio PostgreSQL ainda barraria (transação READ ONLY)."""
-    for sql in ["DELETE FROM produtos", "UPDATE produtos SET ativo = false", "DROP TABLE produtos"]:
+    for sql in [
+        "DELETE FROM produtos",
+        "UPDATE produtos SET ativo = false",
+        "DROP TABLE produtos",
+        "SELECT nextval('produtos_id_seq')",  # sequências também são protegidas pelo banco
+        "SELECT setval('produtos_id_seq', 1000)",
+    ]:
         with pytest.raises(ConsultaInvalida):
             leitura.executar(engine_ro, sql, 5)
     assert client.get("/produtos").json()["total"] == 1
@@ -248,7 +258,7 @@ def test_resultado_maior_que_o_maximo_e_truncado(client, ia_fake, criar_produto)
 
     corpo = _perguntar(client).json()
     assert corpo["total_linhas"] == 3 and corpo["truncado"] is True
-    assert [l[0] for l in corpo["linhas"]] == ["S0", "S1", "S2"]
+    assert [linha[0] for linha in corpo["linhas"]] == ["S0", "S1", "S2"]
 
     ia_fake.config["ia_max_linhas"] = 5  # exatamente o tamanho do resultado: não é truncamento
     assert _perguntar(client).json()["truncado"] is False
@@ -347,7 +357,9 @@ def test_chamada_com_o_sdk_real_da_anthropic_sobre_transporte_falso():
             },
         )  # fmt: skip
 
-    cliente = anthropic.Anthropic(api_key="chave-falsa", http_client=httpx2.Client(transport=httpx2.MockTransport(servidor_falso)))
+    cliente = anthropic.Anthropic(
+        api_key="chave-falsa", http_client=httpx2.Client(transport=httpx2.MockTransport(servidor_falso))
+    )
     settings = Settings(database_url="x", anthropic_model="modelo-de-teste", ia_max_linhas=100)
 
     assert ia.gerar_sql(cliente, settings, "Liste os produtos") == "SELECT sku FROM produtos"

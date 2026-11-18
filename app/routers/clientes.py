@@ -5,12 +5,13 @@ from app.database import get_db
 from app.models import TipoCliente
 from app.paginacao import Pagina, Paginacao, paginacao
 from app.repositories import clientes as repo
+from app.routers import Respostas
 from app.schemas.cliente import ClienteAtualizar, ClienteCriar, ClienteResposta
 from app.services import clientes as service
 
 router = APIRouter(prefix="/clientes", tags=["Clientes"])
 
-_404 = {404: {"description": "Cliente não encontrado."}}
+_404: Respostas = {404: {"description": "Cliente não encontrado."}}
 
 
 @router.post(

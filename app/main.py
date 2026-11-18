@@ -1,7 +1,14 @@
+import logging
+
 from fastapi import FastAPI
 
 from app.errors import registrar_handlers
 from app.routers import clientes, contas_receber, ia, movimentacoes, pedidos, produtos, relatorios
+
+# O uvicorn só configura os loggers dele: sem isto, os logger.info() da aplicação (ex.: a trilha de
+# auditoria das consultas da IA) seriam descartados, pois o nível padrão do Python é WARNING.
+logging.basicConfig(format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+logging.getLogger("app").setLevel(logging.INFO)
 
 DESCRICAO = """
 API REST de estoque, vendas e financeiro da **EletroHidro Distribuidora** (empresa fictícia de materiais
@@ -24,13 +31,20 @@ elétricos e hidráulicos). Projeto de portfólio.
 """
 
 TAGS = [
-    {"name": "Produtos", "description": "Cadastro de produtos. O estoque **não** é editado aqui: só muda por movimentações."},
+    {
+        "name": "Produtos",
+        "description": "Cadastro de produtos. O estoque **não** é editado aqui: só muda por movimentações.",
+    },
     {"name": "Clientes", "description": "Clientes PF (CPF) e PJ (CNPJ), com validação dos dígitos verificadores."},
     {"name": "Movimentações de estoque", "description": "ENTRADA, SAÍDA e AJUSTE. O estoque nunca fica negativo."},
     {"name": "Pedidos", "description": "Pedidos de venda e seu ciclo de status, com baixa e estorno de estoque."},
     {"name": "Financeiro", "description": "Contas a receber geradas no faturamento e registro de pagamento."},
     {"name": "Relatórios", "description": "Consultas de gestão escritas em SQL puro (joins, agregações, filtros)."},
-    {"name": "IA", "description": "Perguntas em português respondidas via Claude, com SQL validado e executado somente para leitura."},
+    {
+        "name": "IA",
+        "description": "Perguntas em português respondidas via Claude, com SQL validado e executado "
+        "somente para leitura.",
+    },
     {"name": "Infra", "description": "Verificação de saúde."},
 ]
 

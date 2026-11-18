@@ -16,7 +16,7 @@ def cnpj_valido(cnpj: str) -> bool:
         return False
     pesos = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
     for n in (12, 13):
-        soma = sum(int(d) * p for d, p in zip(cnpj[:n], pesos[13 - n :]))
+        soma = sum(int(d) * p for d, p in zip(cnpj[:n], pesos[13 - n :], strict=True))
         resto = soma % 11
         if (0 if resto < 2 else 11 - resto) != int(cnpj[n]):
             return False

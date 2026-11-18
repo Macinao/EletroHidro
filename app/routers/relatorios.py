@@ -10,6 +10,7 @@ from app.database import get_db
 from app.models import CategoriaProduto
 from app.periodo import Periodo, periodo
 from app.repositories import relatorios as repo
+from app.routers import Respostas
 from app.schemas.relatorios import (
     ClienteInadimplente,
     ClienteRanking,
@@ -24,7 +25,7 @@ _NOTA_VENDAS = (
     "Considera apenas pedidos **FATURADO** e **ENTREGUE**; o período filtra pela data de faturamento "
     "(emissão da conta a receber)."
 )
-_400 = {400: {"description": "data_inicio posterior a data_fim."}}
+_400: Respostas = {400: {"description": "data_inicio posterior a data_fim."}}
 
 
 @router.get(
@@ -74,7 +75,9 @@ def ranking_clientes(
     "/estoque-abaixo-do-minimo",
     response_model=list[ProdutoEstoqueBaixo],
     summary="Produtos ativos com estoque abaixo do mínimo",
-    description="Estoque atual **menor que** o mínimo; `falta` é quanto repor para chegar ao mínimo. Maior falta primeiro.",
+    description=(
+        "Estoque atual **menor que** o mínimo; `falta` é quanto repor para chegar ao mínimo. Maior falta primeiro."
+    ),
 )
 def estoque_abaixo_do_minimo(
     categoria: CategoriaProduto | None = None,
@@ -89,7 +92,9 @@ def estoque_abaixo_do_minimo(
     "/contas-vencidas",
     response_model=list[ClienteInadimplente],
     summary="Contas a receber vencidas, com total por cliente",
-    description="Contas PENDENTES com vencimento anterior à data de referência, agrupadas por cliente (maior dívida primeiro).",
+    description=(
+        "Contas PENDENTES com vencimento anterior à data de referência, agrupadas por cliente (maior dívida primeiro)."
+    ),
 )
 def contas_vencidas(
     data_referencia: date | None = Query(None, description="Padrão: hoje."),

@@ -38,7 +38,9 @@ def executar(engine: Engine, sql: str, timeout_segundos: int) -> tuple[list[str]
     except DBAPIError as erro:
         original = erro.orig
         if isinstance(original, pg.QueryCanceled):
-            raise ConsultaInvalida(f"A consulta excedeu o tempo limite de {timeout_segundos}s e foi cancelada.") from erro
+            raise ConsultaInvalida(
+                f"A consulta excedeu o tempo limite de {timeout_segundos}s e foi cancelada."
+            ) from erro
         if isinstance(original, pg.OperationalError):  # conexão/autenticação do usuário somente leitura
             raise ServicoIndisponivel("Não foi possível conectar ao banco com o usuário somente leitura.") from erro
         detalhe = getattr(getattr(original, "diag", None), "message_primary", None) or "erro na execução"

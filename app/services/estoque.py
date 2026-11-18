@@ -1,4 +1,4 @@
-﻿"""Regra central do estoque: todo saldo muda por aqui, sempre com uma movimentação registrada."""
+"""Regra central do estoque: todo saldo muda por aqui, sempre com uma movimentação registrada."""
 
 from sqlalchemy.orm import Session
 
@@ -44,7 +44,9 @@ def aplicar_movimentacao(
     return movimentacao
 
 
-def registrar(db: Session, produto_id: int, tipo: TipoMovimentacao, quantidade: int, motivo: str) -> MovimentacaoEstoque:
+def registrar(
+    db: Session, produto_id: int, tipo: TipoMovimentacao, quantidade: int, motivo: str
+) -> MovimentacaoEstoque:
     """Movimentação manual (via API): uma transação por chamada."""
     with transacao(db):
         return aplicar_movimentacao(db, produto_id, tipo, quantidade, motivo)

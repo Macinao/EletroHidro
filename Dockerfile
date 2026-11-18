@@ -4,3 +4,6 @@ WORKDIR /srv
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
+# Não roda como root: se a aplicação for comprometida, o invasor não tem privilégios no container.
+RUN useradd --system --no-create-home app
+USER app

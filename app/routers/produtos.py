@@ -5,12 +5,13 @@ from app.database import get_db
 from app.models import CategoriaProduto
 from app.paginacao import Pagina, Paginacao, paginacao
 from app.repositories import produtos as repo
+from app.routers import Respostas
 from app.schemas.produto import ProdutoAtualizar, ProdutoCriar, ProdutoResposta
 from app.services import produtos as service
 
 router = APIRouter(prefix="/produtos", tags=["Produtos"])
 
-_404 = {404: {"description": "Produto não encontrado."}}
+_404: Respostas = {404: {"description": "Produto não encontrado."}}
 
 
 @router.post(
