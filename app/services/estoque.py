@@ -2,6 +2,7 @@
 
 from sqlalchemy.orm import Session
 
+from app.database import transacao
 from app.errors import Conflito, NaoEncontrado
 from app.models import MovimentacaoEstoque, Produto, TipoMovimentacao
 
@@ -45,10 +46,5 @@ def aplicar_movimentacao(
 
 def registrar(db: Session, produto_id: int, tipo: TipoMovimentacao, quantidade: int, motivo: str) -> MovimentacaoEstoque:
     """Movimentação manual (via API): uma transação por chamada."""
-    try:
-        movimentacao = aplicar_movimentacao(db, produto_id, tipo, quantidade, motivo)
-        db.commit()
-    except Exception:
-        db.rollback()  # libera o lock e descarta qualquer alteração parcial
-        raise
-    return movimentacao
+    with transacao(db):
+        return aplicar_movimentacao(db, produto_id, tipo, quantidade, motivo)

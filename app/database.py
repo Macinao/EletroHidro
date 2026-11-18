@@ -7,6 +7,7 @@
 """
 
 from collections.abc import Iterator
+from contextlib import contextmanager
 
 from sqlalchemy import MetaData, create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
@@ -42,3 +43,17 @@ def get_db() -> Iterator[Session]:
     """
     with SessionLocal() as session:
         yield session
+
+
+@contextmanager
+def transacao(db: Session) -> Iterator[None]:
+    """Tudo ou nada: commita ao sair do bloco, ou faz rollback (liberando locks) se houver erro.
+
+    É o `@Transactional` do Spring escrito à mão, só que explícito no ponto onde se usa.
+    """
+    try:
+        yield
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise

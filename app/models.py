@@ -122,7 +122,14 @@ class Pedido(Base):
 
     cliente: Mapped[Cliente] = relationship()
     # cascade = JPA CascadeType.ALL + orphanRemoval: itens nascem/morrem com o pedido.
-    itens: Mapped[list["ItemPedido"]] = relationship(back_populates="pedido", cascade="all, delete-orphan")
+    itens: Mapped[list["ItemPedido"]] = relationship(
+        back_populates="pedido", cascade="all, delete-orphan", order_by="ItemPedido.id"
+    )
+
+    @property
+    def total(self) -> Decimal:
+        """Calculado, não armazenado: o valor do pedido nunca fica dessincronizado dos itens."""
+        return sum((item.subtotal for item in self.itens), Decimal("0"))
 
 
 class ItemPedido(Base):
@@ -142,6 +149,10 @@ class ItemPedido(Base):
 
     pedido: Mapped[Pedido] = relationship(back_populates="itens")
     produto: Mapped[Produto] = relationship()
+
+    @property
+    def subtotal(self) -> Decimal:
+        return self.preco_unitario * self.quantidade
 
 
 class MovimentacaoEstoque(Base):
@@ -179,3 +190,14 @@ class ContaReceber(Base):
     status: Mapped[StatusConta] = mapped_column(_enum(StatusConta, "status_conta"), default=StatusConta.PENDENTE)
 
     pedido: Mapped[Pedido] = relationship()
+
+    @property
+    def situacao(self) -> StatusConta:
+        """Status que a API mostra. VENCIDO não é gravado: é PENDENTE com vencimento já passado.
+
+        Gravar VENCIDO exigiria um job diário e, até ele rodar, o dado ficaria errado.
+        Derivar na leitura é sempre correto (os relatórios SQL usam a mesma regra).
+        """
+        if self.status == StatusConta.PENDENTE and self.data_vencimento < date.today():
+            return StatusConta.VENCIDO
+        return self.status
